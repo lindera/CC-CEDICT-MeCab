@@ -17,10 +17,31 @@ In this project, we did not train with annotated data but use CC-CEDICT vocabula
 Say, there are "日本" (Japan) and "日本人" (Japanese people), and "人" (person / people). Then their costs are -1131, -2078, and -400. Therefore
 
 ```text
-    cost("日本 人") = -1131 + (-400) = -1531 > cost("日本人") = 2078
+    cost("日本 人") = -1131 + (-400) = -1531 > cost("日本人") = -2078
 ```
 
 Hence "日本人" will be chosen.
+
+### Unknown words
+
+Every unknown word (`unk.def`) costs 400, whatever its length and category. A word that is not in the dictionary thus never lowers the cost of a path, and a run that `char.def` groups into one unknown word, such as a Latin word or a run of katakana, costs more when it is cut into several unknown words than as one:
+
+```text
+    cost("カ ラ オ ケ") = 4 * 400 = 1600 > cost("カラオケ") = 400
+```
+
+In 0.1.0-20200409, every unknown word cost -3200, so a path with more unknown words cost less, and "カラオケ" was read as four words.
+
+### Entries made only of Latin letters or digits
+
+An entry made only of Latin letters (`ALPHA` in `char.def`), such as "T", "PK" or "cos", or only of digits (`NUMERIC`), such as "88", costs 399, one less than an unknown word. For exactly its own characters it beats the unknown word, so its pinyin and definition are kept, and it never wins as the start of a longer run:
+
+```text
+    cost("PK") = 399 < cost(unknown "PK") = 400
+    cost("cos" + unknown "t") = 399 + 400 = 799 > cost(unknown "cost") = 400
+```
+
+With the length rule above, "cos" would cost -2078, and "cos" followed by the unknown word "t" would beat the unknown word "cost" whatever an unknown word costs. `cedict_to_csv.py` gives these entries their cost; its `UNK_COST` must match the costs in `unk.def`.
 
 ## Traditional <--> simplified character converter
 
